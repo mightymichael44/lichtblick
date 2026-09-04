@@ -13,7 +13,7 @@ import { PLOTABLE_ROS_TYPES } from "@lichtblick/suite-base/panels/shared/constan
 import { lineColors } from "@lichtblick/suite-base/util/plotColors";
 
 const makeSeriesNode = memoizeWeak(
-  ({ canDelete, canReorder, index, path, t }: MakeSeriesNode): SettingsTreeNode => {
+  ({ canDelete, canReorder, index, path, t, xAxisVal }: MakeSeriesNode): SettingsTreeNode => {
     const actions = [];
 
     if (canDelete) {
@@ -45,6 +45,16 @@ const makeSeriesNode = memoizeWeak(
           label: t("label"),
           value: path.label,
         },
+        xAxisPath:
+          path.xAxisPath != undefined || xAxisVal === "custom" || xAxisVal === "currentCustom"
+            ? {
+                input: "messagepath",
+                label: t("xAxisValue"),
+                value: path.xAxisPath?.value ?? "",
+                validTypes: PLOTABLE_ROS_TYPES,
+                supportsMathModifiers: true,
+              }
+            : undefined,
         color: {
           input: "rgb",
           label: t("color"),
@@ -77,40 +87,43 @@ const makeSeriesNode = memoizeWeak(
   },
 );
 
-const makeRootSeriesNode = memoizeWeak(({ paths, t }: MakeRootSeriesNode): SettingsTreeNode => {
-  const children = Object.fromEntries(
-    paths.length === 0
-      ? [
-          [
-            "0",
-            makeSeriesNode({
-              canDelete: false,
-              canReorder: false,
-              path: DEFAULT_PLOT_PATH,
-              index: 0,
-              t,
-            }),
-          ],
-        ]
-      : paths.map((path, index) => [
-          `${index}`,
-          makeSeriesNode({ canDelete: true, canReorder: true, index, path, t }),
-        ]),
-  );
-  return {
-    label: t("series"),
-    children,
-    actions: [
-      {
-        type: "action",
-        id: "add-series",
-        display: "inline",
-        icon: "Addchart",
-        label: t("addSeries"),
-      },
-    ],
-  };
-});
+const makeRootSeriesNode = memoizeWeak(
+  ({ paths, t, xAxisVal }: MakeRootSeriesNode): SettingsTreeNode => {
+    const children = Object.fromEntries(
+      paths.length === 0
+        ? [
+            [
+              "0",
+              makeSeriesNode({
+                canDelete: false,
+                canReorder: false,
+                path: DEFAULT_PLOT_PATH,
+                index: 0,
+                xAxisVal,
+                t,
+              }),
+            ],
+          ]
+        : paths.map((path, index) => [
+            `${index}`,
+            makeSeriesNode({ canDelete: true, canReorder: true, index, path, xAxisVal, t }),
+          ]),
+    );
+    return {
+      label: t("series"),
+      children,
+      actions: [
+        {
+          type: "action",
+          id: "add-series",
+          display: "inline",
+          icon: "Addchart",
+          label: t("addSeries"),
+        },
+      ],
+    };
+  },
+);
 
 export function buildSettingsTree(config: PlotConfig, t: TFunction<"plot">): SettingsTreeNodes {
   const maxYError =
@@ -240,6 +253,6 @@ export function buildSettingsTree(config: PlotConfig, t: TFunction<"plot">): Set
         },
       },
     },
-    paths: makeRootSeriesNode({ paths: config.paths, t }),
+    paths: makeRootSeriesNode({ paths: config.paths, xAxisVal: config.xAxisVal, t }),
   };
 }

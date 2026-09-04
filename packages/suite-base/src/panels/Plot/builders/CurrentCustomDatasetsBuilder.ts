@@ -32,8 +32,7 @@ import { getChartValue, isChartValue, resolveChartDatum } from "../utils/datum";
  */
 export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
   #xParsedPath?: Immutable<MessagePath>;
-
-  #xValues: number[] = [];
+  #xParsedPathBySeries = new Map<SeriesConfigKey, Immutable<MessagePath> | undefined>();
 
   #seriesByKey = new Map<SeriesConfigKey, CurrentFrameSeriesItem>();
   #pathsWithMismatchedDataLengths = new Set<string>();
@@ -44,7 +43,10 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
   // when x-values arrive.
   public handlePlayerState(state: Immutable<PlayerState>): HandlePlayerStateResult | undefined {
     const activeData = state.activeData;
-    if (!activeData || !this.#xParsedPath) {
+    const hasAnyXPath =
+      this.#xParsedPath != undefined ||
+      [...this.#xParsedPathBySeries.values()].some((path) => path != undefined);
+    if (!activeData || !hasAnyXPath) {
       return;
     }
 
@@ -54,17 +56,21 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
     }
 
     let datasetsChanged = false;
-    {
+
+    for (const [seriesKey, series] of this.#seriesByKey.entries()) {
+      const xParsedPath = this.#xParsedPathBySeries.get(seriesKey) ?? this.#xParsedPath;
+      if (!xParsedPath) {
+        continue;
+      }
+
       const xAxisMathFn =
-        (this.#xParsedPath.modifier ? mathFunctions[this.#xParsedPath.modifier] : undefined) ??
+        (xParsedPath.modifier ? mathFunctions[xParsedPath.modifier] : undefined) ??
         _.identity<number>;
-
-      const msgEvent = lastMatchingTopic(msgEvents, this.#xParsedPath.topicName);
-      if (msgEvent) {
-        const items = simpleGetMessagePathDataItems(msgEvent, this.#xParsedPath);
-
+      const xMsgEvent = lastMatchingTopic(msgEvents, xParsedPath.topicName);
+      const xValues: number[] = [];
+      if (xMsgEvent) {
+        const items = simpleGetMessagePathDataItems(xMsgEvent, xParsedPath);
         datasetsChanged ||= items.length > 0;
-        this.#xValues = [];
         for (const item of items) {
           if (!isChartValue(item)) {
             continue;
@@ -75,20 +81,17 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
             continue;
           }
 
-          this.#xValues.push(xAxisMathFn(chartValue));
+          xValues.push(xAxisMathFn(chartValue));
         }
       }
-    }
 
-    for (const series of this.#seriesByKey.values()) {
       const mathFn = series.parsed.modifier ? mathFunctions[series.parsed.modifier] : undefined;
-
-      const msgEvent = lastMatchingTopic(msgEvents, series.parsed.topicName);
-      if (!msgEvent) {
+      const yMsgEvent = lastMatchingTopic(msgEvents, series.parsed.topicName);
+      if (!yMsgEvent) {
         continue;
       }
 
-      const items = simpleGetMessagePathDataItems(msgEvent, series.parsed);
+      const items = simpleGetMessagePathDataItems(yMsgEvent, series.parsed);
       datasetsChanged ||= items.length > 0;
 
       const pathItems = filterMap(items, (item, idx) => {
@@ -98,14 +101,14 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
         }
 
         return {
-          x: this.#xValues[idx] ?? NaN,
+          x: xValues[idx] ?? NaN,
           y: datum.y,
-          receiveTime: msgEvent.receiveTime,
+          receiveTime: yMsgEvent.receiveTime,
           value: datum.value,
         };
       });
 
-      if (pathItems.length === this.#xValues.length) {
+      if (pathItems.length === xValues.length) {
         this.#pathsWithMismatchedDataLengths.delete(series.messagePath);
       } else {
         this.#pathsWithMismatchedDataLengths.add(series.messagePath);
@@ -127,6 +130,11 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
 
     // When the x-path changes we clear any existing data from the datasets
     this.#xParsedPath = path;
+    for (const [key, override] of this.#xParsedPathBySeries.entries()) {
+      if (override == undefined) {
+        this.#xParsedPathBySeries.set(key, path);
+      }
+    }
     for (const series of this.#seriesByKey.values()) {
       series.dataset.data = [];
     }
@@ -134,6 +142,10 @@ export class CurrentCustomDatasetsBuilder implements IDatasetsBuilder {
   }
 
   public setSeries(series: Immutable<SeriesItem[]>): void {
+    this.#xParsedPathBySeries = new Map();
+    for (const item of series) {
+      this.#xParsedPathBySeries.set(item.key, item.xAxisPath ?? undefined);
+    }
     this.#seriesByKey = setSeries(this.#seriesByKey, series);
   }
 

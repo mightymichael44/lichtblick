@@ -182,6 +182,49 @@ describe("useSubscriptions", () => {
       expect(setSubscriptions).toHaveBeenCalledWith(subscriberId, expect.any(Array));
     });
 
+    it("should subscribe to per-series x-axis paths", () => {
+      const seriesPath = "/series.value";
+      const seriesXAxisPath = "/series_x.value";
+      const globalXAxisPath = "/global_x.value";
+      const parsedPaths = new Map([
+        [seriesPath, "series-path"],
+        [seriesXAxisPath, "series-x-path"],
+        [globalXAxisPath, "global-x-path"],
+      ]);
+      (isReferenceLinePlotPathType as jest.Mock).mockReturnValue(false);
+      (parseMessagePath as jest.Mock).mockImplementation((path: string) => parsedPaths.get(path));
+      (fillInGlobalVariablesInPath as jest.Mock).mockImplementation(
+        (path: string) => `filled-${path}`,
+      );
+      (pathToSubscribePayload as jest.Mock).mockImplementation(
+        (path: string, preloadType: string) => `${path}-${preloadType}`,
+      );
+
+      const { subscriberId } = setup({
+        config: {
+          paths: [
+            PlotBuilder.path({
+              value: seriesPath,
+              xAxisPath: { enabled: true, value: seriesXAxisPath },
+            }),
+          ],
+          xAxisPath: { enabled: true, value: globalXAxisPath },
+          xAxisVal: "currentCustom",
+        },
+      });
+
+      expect(parseMessagePath).toHaveBeenCalledWith(seriesPath);
+      expect(parseMessagePath).toHaveBeenCalledWith(seriesXAxisPath);
+      expect(parseMessagePath).toHaveBeenCalledWith(globalXAxisPath);
+      expect(fillInGlobalVariablesInPath).toHaveBeenCalledTimes(3);
+      expect(pathToSubscribePayload).toHaveBeenCalledTimes(3);
+      expect(setSubscriptions).toHaveBeenCalledWith(subscriberId, [
+        "filled-series-path-partial",
+        "filled-global-x-path-partial",
+        "filled-series-x-path-partial",
+      ]);
+    });
+
     it("should set subscriptions when xAxisVal is currentCustom and parsedPath is undefined", () => {
       const parsedPath = undefined;
       const filledInGlobalVarsPath = BasicBuilder.string();
@@ -232,6 +275,7 @@ describe("useSubscriptions", () => {
         config: {
           paths: PlotBuilder.paths(1),
           xAxisPath: undefined,
+          xAxisVal: "timestamp",
         },
       });
 
@@ -249,6 +293,7 @@ describe("useSubscriptions", () => {
         config: {
           paths: PlotBuilder.paths(1),
           xAxisPath: undefined,
+          xAxisVal: "timestamp",
         },
       });
 

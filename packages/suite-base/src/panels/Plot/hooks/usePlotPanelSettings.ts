@@ -37,6 +37,16 @@ export function handleUpdateAction({ draft, path, value }: HandleUpdateAction): 
 
     if (path[2] === "visible") {
       _.set(draft, [...path.slice(0, 2), "enabled"], value);
+    } else if (path[2] === "xAxisPath") {
+      const seriesIndex = Number(path[1]);
+      const series = draft.paths[seriesIndex];
+      if (!series) {
+        return;
+      }
+      series.xAxisPath = {
+        ...(series.xAxisPath ?? { enabled: true }),
+        value: String(value),
+      };
     } else {
       _.set(draft, path, value);
     }

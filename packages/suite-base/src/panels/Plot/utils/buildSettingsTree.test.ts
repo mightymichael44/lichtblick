@@ -99,6 +99,46 @@ describe("buildSettingsTree", () => {
     expect(tree.paths?.children!["0"]?.fields?.value?.value).toBe(DEFAULT_PLOT_PATH.value);
   });
 
+  it.each([
+    "custom",
+    "currentCustom",
+  ] as const)("should include a per-series x-axis field for %s plots", (xAxisVal) => {
+    // Given
+    const xAxisPath = "/series_x.value";
+    const config = PlotBuilder.config({
+      paths: [PlotBuilder.path({ xAxisPath: { enabled: true, value: xAxisPath } })],
+      xAxisVal,
+    });
+
+    // When
+    const tree = buildSettingsTree(config, t);
+
+    // Then
+    expect(tree.paths?.children!["0"]?.fields?.xAxisPath).toEqual(
+      expect.objectContaining({
+        input: "messagepath",
+        label: "xAxisValue",
+        value: xAxisPath,
+        validTypes: PLOTABLE_ROS_TYPES,
+        supportsMathModifiers: true,
+      }),
+    );
+  });
+
+  it("should omit a per-series x-axis field for timestamp plots without an override", () => {
+    // Given
+    const config = PlotBuilder.config({
+      paths: [PlotBuilder.path({ xAxisPath: undefined })],
+      xAxisVal: "timestamp",
+    });
+
+    // When
+    const tree = buildSettingsTree(config, t);
+
+    // Then
+    expect(tree.paths?.children!["0"]?.fields?.xAxisPath).toBeUndefined();
+  });
+
   it("should set an error when maxYValue is less than or equal to minYValue", () => {
     const config: PlotConfig = PlotBuilder.config({
       maxXValue: 100,

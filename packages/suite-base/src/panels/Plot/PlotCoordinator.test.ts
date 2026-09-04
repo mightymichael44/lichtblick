@@ -604,6 +604,25 @@ describe("PlotCoordinator", () => {
       expect(setSeriesSpy).toHaveBeenCalledWith(plotCoordinator["series"]);
     });
 
+    it("should pass per-series x-axis paths to the datasets builder", () => {
+      // Given
+      const xAxisPath = PlotBuilder.path({ value: "/series_x.value" });
+      const config = PlotBuilder.config({
+        paths: [PlotBuilder.path({ xAxisPath })],
+      });
+      const parsedXAxisPath = { topicName: "/series_x" };
+      (parseMessagePath as jest.Mock).mockImplementation((path: string) =>
+        path === xAxisPath.value ? parsedXAxisPath : { topicName: "/series" },
+      );
+      (fillInGlobalVariablesInPath as jest.Mock).mockImplementation((path) => path);
+
+      // When
+      plotCoordinator.handleConfig(config, "light", {});
+
+      // Then
+      expect(plotCoordinator["series"][0]?.xAxisPath).toBe(parsedXAxisPath);
+    });
+
     it("should correctly create 2 series even if both have the same message path", () => {
       const messagePath = PlotBuilder.path({
         value: BasicBuilder.string(),

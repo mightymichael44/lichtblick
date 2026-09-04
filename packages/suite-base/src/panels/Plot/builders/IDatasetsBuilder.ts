@@ -38,6 +38,7 @@ export type SeriesItem = {
   configIndex: number;
   messagePath: string;
   parsed: MessagePath;
+  xAxisPath?: MessagePath;
   color: string;
   /** Used for points when lines are also shown to provide extra contrast */
   contrastColor: string;

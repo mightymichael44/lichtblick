@@ -69,6 +69,27 @@ const useSubscriptions = (config: PlotConfig, subscriberId: string): void => {
       }
     }
 
+    if (xAxisVal === "custom" || xAxisVal === "currentCustom") {
+      for (const item of paths) {
+        if (isReferenceLinePlotPathType(item) || !item.xAxisPath?.value) {
+          continue;
+        }
+
+        const parsedPath = parseMessagePath(item.xAxisPath.value);
+        if (!parsedPath) {
+          continue;
+        }
+
+        const xAxisSub = pathToSubscribePayload(
+          fillInGlobalVariablesInPath(parsedPath, globalVariables),
+          preloadType,
+        );
+        if (xAxisSub) {
+          subscriptions.push(xAxisSub);
+        }
+      }
+    }
+
     setSubscriptions(subscriberId, subscriptions);
   }, [config, xAxisVal, paths, globalVariables, setSubscriptions, subscriberId]);
 

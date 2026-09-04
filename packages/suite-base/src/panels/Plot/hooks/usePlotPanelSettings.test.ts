@@ -92,6 +92,27 @@ describe("handleUpdateAction", () => {
     );
   });
 
+  it("should update a per-series xAxisPath and preserve its enabled state", () => {
+    // Given
+    const initialConfig = PlotBuilder.config({
+      paths: [PlotBuilder.path({ xAxisPath: { enabled: false, value: "/old.value" } })],
+    });
+    const input: HandleUpdateAction = {
+      draft: _.cloneDeep(initialConfig),
+      path: ["paths", "0", "xAxisPath"],
+      value: "/new.value",
+    };
+
+    // When
+    handleUpdateAction(input);
+
+    // Then
+    expect(input.draft.paths[0]?.xAxisPath).toEqual({
+      enabled: false,
+      value: "/new.value",
+    });
+  });
+
   it("should update minXValue and maxXValue to undefined", () => {
     const initialConfig = PlotBuilder.config({ paths: [] });
     const input: HandleUpdateAction = {

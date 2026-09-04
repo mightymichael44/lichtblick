@@ -297,6 +297,13 @@ export class PlotCoordinator extends EventEmitter<PlotCoordinatorEventTypes> {
       }
 
       const color = getLineColor(path.color, idx);
+      const xAxisPathValue = path.xAxisPath?.value ?? config.xAxisPath?.value;
+      const filledXAxisPath =
+        xAxisPathValue != undefined ? parseMessagePath(xAxisPathValue) : undefined;
+      const xAxisParsed =
+        filledXAxisPath == undefined
+          ? undefined
+          : fillInGlobalVariablesInPath(filledXAxisPath, globalVariables);
 
       if (pathToSubscribePayload(filledParsed, "full") != undefined) {
         const keys = newSeriesKeysByTopic.get(filledParsed.topicName) ?? new Set<SeriesConfigKey>();
@@ -309,6 +316,7 @@ export class PlotCoordinator extends EventEmitter<PlotCoordinatorEventTypes> {
         configIndex: idx,
         messagePath: path.value,
         parsed: filledParsed,
+        xAxisPath: xAxisParsed,
         color,
         contrastColor: getContrastColor(colorScheme, color),
         lineSize: path.lineSize ?? 1.0,

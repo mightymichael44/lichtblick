@@ -27,6 +27,7 @@ function buildSeriesItems(
     return {
       configIndex: idx,
       parsed,
+      xAxisPath: item.xAxisPath?.value ? parseMessagePath(item.xAxisPath.value) : undefined,
       color: "red",
       contrastColor: "blue",
       enabled: item.enabled ?? true,
@@ -174,6 +175,63 @@ describe("CurrentCustomDatasetsBuilder", () => {
           pointRadius: 1.2,
           fill: false,
         }),
+      ],
+    });
+  });
+
+  it("should use the per-series x-axis path when configured", async () => {
+    // Given
+    const builder = new CurrentCustomDatasetsBuilder();
+    builder.setXPath(parseMessagePath("/global_x.val"));
+    builder.setSeries(
+      buildSeriesItems([
+        { value: "/series_a.val", xAxisPath: { value: "/series_a_x.val" } },
+        { value: "/series_b.val" },
+      ]),
+    );
+
+    // When
+    builder.handlePlayerState(
+      buildPlayerState({
+        messages: [
+          {
+            topic: "/series_a_x",
+            schemaName: "x",
+            receiveTime: { sec: 0, nsec: 0 },
+            sizeInBytes: 0,
+            message: { val: 10 },
+          },
+          {
+            topic: "/global_x",
+            schemaName: "x",
+            receiveTime: { sec: 0, nsec: 0 },
+            sizeInBytes: 0,
+            message: { val: 20 },
+          },
+          {
+            topic: "/series_a",
+            schemaName: "a",
+            receiveTime: { sec: 0, nsec: 0 },
+            sizeInBytes: 0,
+            message: { val: 1 },
+          },
+          {
+            topic: "/series_b",
+            schemaName: "b",
+            receiveTime: { sec: 0, nsec: 0 },
+            sizeInBytes: 0,
+            message: { val: 2 },
+          },
+        ],
+      }),
+    );
+
+    // Then
+    await expect(builder.getViewportDatasets()).resolves.toEqual({
+      pathsWithMismatchedDataLengths: new Set(),
+      datasetsByConfigIndex: [
+        expect.objectContaining({ data: [expect.objectContaining({ x: 10, y: 1 })] }),
+        expect.objectContaining({ data: [expect.objectContaining({ x: 20, y: 2 })] }),
       ],
     });
   });

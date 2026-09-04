@@ -43,5 +43,6 @@ export const plot = {
   top: "Top",
   value: "Value",
   xAxis: "X Axis",
+  xAxisValue: "X-axis value",
   yAxis: "Y Axis",
 };

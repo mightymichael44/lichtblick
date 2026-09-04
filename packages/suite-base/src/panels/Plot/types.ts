@@ -14,7 +14,11 @@ import { CurrentCustomDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot
 import { CustomDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/CustomDatasetsBuilder";
 import { IndexDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/IndexDatasetsBuilder";
 import { TimestampDatasetsBuilder } from "@lichtblick/suite-base/panels/Plot/builders/TimestampDatasetsBuilder";
-import { PlotConfig, PlotPath } from "@lichtblick/suite-base/panels/Plot/utils/config";
+import {
+  PlotConfig,
+  PlotPath,
+  PlotXAxisVal,
+} from "@lichtblick/suite-base/panels/Plot/utils/config";
 import { Bounds1D } from "@lichtblick/suite-base/types/Bounds";
 import { SaveConfig } from "@lichtblick/suite-base/types/panels";
 
@@ -213,11 +217,13 @@ export type MakeSeriesNode = {
   index: number;
   canDelete: boolean;
   canReorder: boolean;
+  xAxisVal?: PlotXAxisVal;
   t: TFunction<"plot">;
 };
 
 export type MakeRootSeriesNode = {
   paths: PlotPath[];
+  xAxisVal?: PlotXAxisVal;
   t: TFunction<"plot">;
 };
 
